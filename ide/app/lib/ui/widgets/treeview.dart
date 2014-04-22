@@ -49,6 +49,10 @@ class TreeView implements ListViewDelegate {
   TreeViewCell _currentDragOverCell;
   // Whether the user can drag a cell.
   bool draggingEnabled = false;
+  // Timer to expand cell on dragover
+  Timer _pendingExpansionTimer;
+  // nodeUID associated with above timer
+  String _pendingExpansionUID;
   // Unique identifier of the tree.
   String _uuid;
 
@@ -67,6 +71,8 @@ class TreeView implements ListViewDelegate {
     _listView = new ListView(element, this);
     _rows = null;
     _rowsMap = null;
+    _pendingExpansionTimer = null;
+    _pendingExpansionUID = null;
     reloadData();
   }
 
@@ -439,17 +445,17 @@ class TreeView implements ListViewDelegate {
       }
       if (cell != null) {
         cell.dragOverlayVisible = true;
-   
-        //expand cell if it's a pausing drag hover
-        new Timer(const Duration(milliseconds: 1000), () {
-          if(_currentDragOverCell != null) {
-            if(nodeUID == _currentDragOverCell.nodeUID) {
-              if(!isNodeExpanded(nodeUID)) {
-                setNodeExpanded(nodeUID, true, animated: true);
-              }
-            } 
-          }
-        });
+        
+        if(_pendingExpansionUID != cell.nodeUID && _pendingExpansionTimer != null) {
+            _pendingExpansionTimer.cancel();
+        }
+        // Queue cell for expanding if it's a pausing drag hover.
+        _pendingExpansionUID = cell.nodeUID;
+        _pendingExpansionTimer = new Timer(const Duration(milliseconds: 1000), () {
+          if(_currentDragOverCell != null && nodeUID == _currentDragOverCell.nodeUID && !isNodeExpanded(nodeUID)) {
+            setNodeExpanded(nodeUID, true, animated: true);
+          } 
+        });        
       }
       _currentDragOverCell = cell;
     }
